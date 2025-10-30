@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Under the Hood Challenge</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
+    h1 { color: #00ff99; text-align: center; }
+    .problem { border: 1px solid #333; border-radius: 10px; padding: 15px; margin-top: 15px; background: #1b1b1b; }
+    .locked { opacity: 0.4; pointer-events: none; }
+    input, button { font-size: 1rem; padding: 10px; margin-top: 10px; width: 100%; border-radius: 5px; border: none; }
+    button { background: #00ff99; color: #000; font-weight: bold; cursor: pointer; }
+    button:hover { background: #00cc77; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Under the Hood Challenge</h1>
+  <p>Enter your team name to begin:</p>
+  <input id="team" placeholder="Team name" />
+  <button onclick="start()">Start Challenge</button>
+  <div id="problems"></div>
+
+  <script>
+    const API_BASE = "https://under-the-hood-backend-1.onrender.com";
+    let team = "";
+    let currentIndex = 0;
+    let problems = [];
+
+    async function start() {
+      team = document.getElementById("team").value.trim();
+      if (!team) return alert("Enter a team name!");
+
+      const res = await fetch(`${API_BASE}/api/progress?team=${team}`);
+      const data = await res.json();
+      problems = data.problems;
+      currentIndex = data.currentIndex;
+      renderProblems();
+    }
+
+    function renderProblems() {
+      const container = document.getElementById("problems");
+      container.innerHTML = "";
+      problems.forEach((p, i) => {
+        const div = document.createElement("div");
+        div.className = "problem" + (i > currentIndex ? " locked" : "");
+        div.innerHTML = `
+          <h3>${p.title}</h3>
+          <p>${p.description}</p>
+          ${p.files.map(f => `<a href="${API_BASE}/files/${f}" target="_blank" style="color:#00ff99;">Download ${f}</a><br>`).join("")}
+          <input id="flag-${p.id}" placeholder="Enter flag for ${p.title}" />
+          <button onclick="submitFlag('${p.id}')">Submit</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function submitFlag(problemId) {
+      const flag = document.getElementById(`flag-${problemId}`).value.trim();
+      if (!flag) return alert("Enter a flag!");
+      const res = await fetch(`${API_BASE}/api/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team, problemId, flag })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Correct! Next problem unlocked.");
+        currentIndex = data.currentIndex;
+        renderProblems();
+      } else {
+        alert("❌ Incorrect flag!");
+      }
+    }
+  </script>
+</body>
+</html>
